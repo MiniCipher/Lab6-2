@@ -112,6 +112,9 @@ int main() {
             std::cout << "Coroutine finished (or terminated due to violation)." << std::endl;
             break;
         }
+        std::cout << "\nProgram finished. Press Enter to exit...";
+        std::cin.ignore();
+        std::cin.get(); // Програма чекатиме, поки ти натиснеш Enter
     }
 
     return 0;
