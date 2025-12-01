@@ -1,11 +1,10 @@
-#include <iostream>
+п»ї#include <iostream>
 #include <coroutine>
 #include <deque>
 #include <numeric>
 #include <chrono>
-#include <thread> // Для sleep, якщо знадобиться, але ми використаємо cin.get()
+#include <thread>
 
-// === 1. Структура генератора (Без змін) ===
 struct AverageGenerator {
     struct promise_type;
     using handle_type = std::coroutine_handle<promise_type>;
@@ -43,7 +42,6 @@ struct AverageGenerator {
     }
 };
 
-// === 2. Сопрограма (Строга перевірка на початку) ===
 AverageGenerator calculate_average_coro() {
     std::deque<double> history;
     double input;
@@ -52,14 +50,12 @@ AverageGenerator calculate_average_coro() {
     bool zero_flag_active = false;
 
     while (true) {
-        // [ПЕРЕВІРКА ЧАСУ]: Робимо це НАЙПЕРШИМ кроком після відновлення
         if (zero_flag_active) {
             auto now = std::chrono::steady_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_zero_time).count();
 
             if (duration < 1000) {
                 std::cout << "\n[VIOLATION] Resumed too fast (" << duration << "ms < 1000ms)! Logic check failed.\n";
-                // Замість exit(0) робимо co_return, щоб коректно завершити об'єкт
                 co_return;
             }
             else {
@@ -78,7 +74,6 @@ AverageGenerator calculate_average_coro() {
 
             double avg = history.empty() ? 0.0 : std::accumulate(history.begin(), history.end(), 0.0) / history.size();
 
-            // Зупиняємось ТУТ. Наступний resume() кине нас на початок while (до перевірки часу)
             co_yield avg;
             continue;
         }
@@ -93,7 +88,6 @@ AverageGenerator calculate_average_coro() {
 
 
 
-// === 3. Main (Інтерактивний) ===
 int main() {
     std::cout << "--- Coroutine Lab: Manual Control ---\n";
     std::cout << "1. Enter numbers to count average.\n";
@@ -102,33 +96,17 @@ int main() {
 
     auto generator = calculate_average_coro();
 
-    // Перший запуск - доходимо до першого введення
-    // (Але оскільки initial_suspend = suspend_always, треба штовхнути один раз, 
-    // щоб дійти до першого cin всередині)
     generator.resume();
 
     while (true) {
-        // Цей цикл керує тим, що відбувається ПІСЛЯ того, як сопрограма повернула значення
-
-        // Якщо сопрограма все ще активна (не завершилась через помилку)
-        // Ми показуємо результат (якщо це не був перший холостий прохід)
-        // (Тут спрощена логіка для демо)
-
-        // Тут хитрий момент: після cin >> input у буфері залишається '\n'.
-        // Щоб cin.get() спрацював коректно, треба почистити буфер, якщо ми щось вводили.
-        // Але найпростіше - просто спробувати відновити.
-
-        // УВАГА: У нашій логіці сопрограма зупиняється (yield) ТІЛЬКИ коли ввели число (або 0).
-        // Тому зараз ми маємо результат.
+        
         std::cout << " -> Yielded Average: " << generator.get_result() << std::endl;
 
         std::cout << ">>> Press ENTER to attempt resume (wait 1s if previous was 0)...";
 
-        // Чистимо буфер вводу від попереднього числа + Enter
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-        std::cin.get(); // Чекаємо, поки юзер натисне Enter
+        std::cin.get();
 
-        // Намагаємось відновити
         bool active = generator.resume();
 
         if (!active) {
