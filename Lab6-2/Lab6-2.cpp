@@ -3,7 +3,6 @@
 #include <deque>
 #include <numeric>
 #include <chrono>
-#include <thread>
 
 struct AverageGenerator {
     struct promise_type;
